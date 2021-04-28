@@ -1,0 +1,42 @@
+{
+  "generator-jhipster": {
+    "promptValues": {
+      "packageName": "com.stock.app",
+      "nativeLanguage": "zh-tw"
+    },
+    "jhipsterVersion": "6.10.5",
+    "applicationType": "microservice",
+    "baseName": "stock",
+    "packageName": "com.stock.app",
+    "packageFolder": "com/stock/app",
+    "serverPort": "8085",
+    "authenticationType": "jwt",
+    "cacheProvider": "hazelcast",
+    "enableHibernateCache": false,
+    "websocket": false,
+    "databaseType": "sql",
+    "devDatabaseType": "postgresql",
+    "prodDatabaseType": "postgresql",
+    "searchEngine": false,
+    "messageBroker": "kafka",
+    "serviceDiscoveryType": "eureka",
+    "buildTool": "maven",
+    "enableSwaggerCodegen": false,
+    "jwtSecretKey": "OWVhNDMzMjJjZjAzNDNkOWE4ODRkMzVmNDQ1YzJjYTgxNDNjMGNjNDY3NWFlYjEyNTg2NzhmMjM4MGU4NGZjZDUyZDEzM2RhZDhhODZjYjNiNmQ5ZWU2YWUwOTEwZDAyMmY5MGYwOTA3ZTUyYjRjMGE2Yjc0OTYyZjRkOTRlYjU=",
+    "embeddableLaunchScript": false,
+    "creationTimestamp": 1618388294065,
+    "testFrameworks": [],
+    "jhiPrefix": "jhi",
+    "entitySuffix": "",
+    "dtoSuffix": "DTO",
+    "otherModules": [],
+    "enableTranslation": true,
+    "clientPackageManager": "npm",
+    "nativeLanguage": "zh-tw",
+    "languages": ["zh-tw", "en"],
+    "blueprints": [],
+    "skipClient": true,
+    "skipUserManagement": true,
+    "lastLiquibaseTimestamp": 1618392921000
+  }
+}
