@@ -1,5 +1,6 @@
 package com.stock.app.repository;
 
+import com.stock.app.domain.DailyPrice;
 import com.stock.app.domain.MainStock;
 
 import org.springframework.data.jpa.repository.*;
@@ -11,4 +12,6 @@ import org.springframework.stereotype.Repository;
 @SuppressWarnings("unused")
 @Repository
 public interface MainStockRepository extends JpaRepository<MainStock, Long> {
+
+    public MainStock findByNo(String no);
 }
