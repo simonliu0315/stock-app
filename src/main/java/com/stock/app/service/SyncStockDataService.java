@@ -113,28 +113,26 @@ public class SyncStockDataService {
         long now = System.currentTimeMillis() / 1000;
         System.out.println(
             "Fixed rate task with one second initial delay - " + now);
-        doGetMainInfo();
+        //doGetMainInfo();
         List<MainStock> mainStockList = mainStockRepository.findAll();
         log.debug("query stock size: {}", mainStockList.size());
 
         LocalDate startDate = LocalDate.parse("2020-01-01"),
             endDate   = LocalDate.now();
+        for (LocalDate date = startDate; date.isBefore(endDate); date = date.plusMonths(1)) {
+            String queryStartDate = date.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            //帶入yyyymmdd撈出整月(當月)股價
+            mainStockList.forEach(x -> doGetDailyStock(x.getNo(), queryStartDate));
 
+        }
         for (LocalDate date = startDate; date.isBefore(endDate); date = date.plusDays(1)) {
             String queryStartDate = date.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
-            //每天股價
-            mainStockList.forEach(x -> doGetDailyStock(x.getNo(), queryStartDate));
 
             //mainStockList.forEach(x -> doGetDailyStock2(x.getNo(), queryStartDate));
             //大戶持股比
-            mainStockList.forEach(x -> doPostQueryStockLevelNumber(x.getNo(), queryStartDate));
+            //mainStockList.forEach(x -> doPostQueryStockLevelNumber(x.getNo(), queryStartDate));
             //外資持股比
-            doGetTWT38U(queryStartDate);
-
-
-
-
-            Thread.sleep(3000);
+            //doGetTWT38U(queryStartDate);
         }
 
 
@@ -339,23 +337,23 @@ public class SyncStockDataService {
         log.info("fetch {}", url);
         URL obj = null;
         try {
-            Thread.sleep(3000);
+            Thread.sleep(5000);
             HttpsURLConnection.setDefaultSSLSocketFactory(getSSLContext().getSocketFactory());
             HttpsURLConnection.setDefaultHostnameVerifier(getHostnameVerifier());
             obj = new URL(url);
             con = (HttpURLConnection) obj.openConnection();
             con.setRequestMethod("GET");
             con.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
-            con.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
-            con.setRequestProperty("Accept-Language", "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7");
-            con.setRequestProperty("Cache-Control", "max-age=0");
+            //con.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
+            //con.setRequestProperty("Accept-Language", "zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7");
+            //con.setRequestProperty("Cache-Control", "max-age=0");
             con.setRequestProperty("Connection", "keep-alive");
-            con.setRequestProperty("Cookie", "_ga=GA1.1.427047596.1619076056; _ga_F4L5BYPQDJ=GS1.1.1619764416.8.0.1619764416.0; JSESSIONID=82FE4C17F4F61EBE5CFB9544EFFF8EF9");
+            //con.setRequestProperty("Cookie", "_ga=GA1.1.427047596.1619076056; _ga_F4L5BYPQDJ=GS1.1.1619764416.8.0.1619764416.0; JSESSIONID=82FE4C17F4F61EBE5CFB9544EFFF8EF9");
             con.setRequestProperty("Host", "www.twse.com.tw");
-            con.setRequestProperty("Sec-Fetch-Dest", "document");
-            con.setRequestProperty("Sec-Fetch-Mode", "navigate");
+            //con.setRequestProperty("Sec-Fetch-Dest", "document");
+            //con.setRequestProperty("Sec-Fetch-Mode", "navigate");
             con.setRequestProperty("Sec-Fetch-Site", "none");
-            con.setRequestProperty("Sec-Fetch-User", "?1");
+            //con.setRequestProperty("Sec-Fetch-User", "?1");
             con.setRequestProperty("Upgrade-Insecure-Requests", "1");
             con.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/88.0.4324.150 Safari/537.36");
             //con.setRequestProperty("", "");
@@ -373,28 +371,46 @@ public class SyncStockDataService {
                 JSONObject jsonObject = new JSONObject(line);
                 StockDay stockDay = new ObjectMapper().readValue(line, StockDay.class);
 
-                DailyPrice dp = new DailyPrice();
-                dp.setNo(stockNo);
+
 
                 if (stockDay != null && StringUtils.equals(stockDay.getStat(), "OK")) {
                     for(String[] a : stockDay.getData()) {
-
-                        log.info("a[7] = {}", a[7]);
+                        DailyPrice dp = new DailyPrice();
+                        dp.setNo(stockNo);
                         dp.setDate(a[0].replaceAll("/","").replaceAll(",", ""));
                         dp.setTxnNumber(new BigDecimal(a[1].trim().replaceAll("/","").replaceAll(",", "")));
                         dp.setTxnAmount(new BigDecimal(a[2].trim().replaceAll("/","").replaceAll(",", "")));
-                        dp.setStartPrice(new BigDecimal(a[3].trim().trim().replaceAll("/","").replaceAll(",", "")));
-                        dp.setHighPrice(new BigDecimal(a[4].trim().replaceAll("/","").replaceAll(",", "")));
-                        dp.setLowPrice(new BigDecimal(a[5].trim().replaceAll("/","").replaceAll(",", "")));
-                        dp.setEndPrice(new BigDecimal(a[6].trim().replaceAll("/","").replaceAll(",", "")));
+                        if (StringUtils.equals("--", a[3].trim())) {
+                            dp.setHighLowPriceSign("X");
+                        } else {
+                            dp.setStartPrice(new BigDecimal(a[3].trim().trim().replaceAll("/","").replaceAll(",", "")));
+                        }
+                        if (StringUtils.equals("--", a[4].trim())) {
+
+                        } else {
+                            dp.setHighPrice(new BigDecimal(a[4].trim().replaceAll("/","").replaceAll(",", "")));
+                        }
+                        if (StringUtils.equals("--", a[5].trim())) {
+
+                        } else {
+                            dp.setHighPrice(new BigDecimal(a[5].trim().replaceAll("/","").replaceAll(",", "")));
+                        }
+                        if (StringUtils.equals("--", a[6].trim())) {
+
+                        } else {
+                            dp.setHighPrice(new BigDecimal(a[6].trim().replaceAll("/","").replaceAll(",", "")));
+                        }
 
                         dp.setHighLowPrice(new BigDecimal(a[7].trim().replaceAll("/","").replaceAll(",", "").replaceAll("X","")));
                         dp.setTxnCount(new BigDecimal(a[8].trim().replaceAll("/","").replaceAll(",", "")));
+                        if (a[7].trim().indexOf("X") >= 0) {
+                            dp.setHighLowPriceSign("X");
+                        }
 
                         //log.info("-->{}",dp);
                         DailyPrice dprice = dailyPriceRepository.findByNoAndDate(dp.getNo(), dp.getDate());
                         if (dprice == null) {
-                            dprice = dailyPriceRepository.save(dp);
+                            dprice = dailyPriceRepository.saveAndFlush(dp);
                             //log.info("{}", dprice.toString());
                         }
                     }
