@@ -49,6 +49,7 @@ import org.w3c.dom.NodeList;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -108,35 +109,171 @@ public class SyncStockDataService {
 */
 //    @Scheduled((cron="0 0 */6 * * *"))
 
-    @Scheduled(fixedDelay = 1000000000, initialDelay = 1000)
-    public void SyncStockDay() throws NoSuchAlgorithmException, KeyManagementException, InterruptedException {
-        long now = System.currentTimeMillis() / 1000;
-        System.out.println(
-            "Fixed rate task with one second initial delay - " + now);
-        //doGetMainInfo();
-        List<MainStock> mainStockList = mainStockRepository.findAll();
-        log.debug("query stock size: {}", mainStockList.size());
+    //每天一次同步個股基本資料
+    @Scheduled(cron="0 0 10 * * *")
+    public void SyncStockInfo() throws NoSuchAlgorithmException, KeyManagementException, InterruptedException {
+        doGetMainInfo();
+    }
 
-        LocalDate startDate = LocalDate.parse("2020-01-01"),
-            endDate   = LocalDate.now();
+    //同步大戶持股比, 外資持股比
+    @Scheduled(cron="0 0 11 * * *")
+    public void SyncStockOther() throws NoSuchAlgorithmException, KeyManagementException, InterruptedException {
+        long now = System.currentTimeMillis() / 1000;
+        List<MainStock> mainStockList = mainStockRepository.findAll();
+
+        LocalDate startDate = LocalDate.parse("2018-01-01"), endDate = LocalDate.now();
+        for (LocalDate date = startDate; date.isBefore(endDate); date = date.plusDays(1)) {
+            String queryStartDate = date.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+            //大戶持股比
+            mainStockList.forEach(x -> doPostQueryStockLevelNumber(x.getNo(), queryStartDate));
+            //外資持股比
+            doGetTWT38U(queryStartDate);
+        }
+    }
+    @Scheduled(cron="0 0 19 * * *")
+    public void SyncStockDay() throws NoSuchAlgorithmException, KeyManagementException, InterruptedException {
+        List<MainStock> mainStockList = mainStockRepository.findAll();
+        LocalDate startDate = LocalDate.parse("2018-01-01"), endDate = LocalDate.now();
         for (LocalDate date = startDate; date.isBefore(endDate); date = date.plusMonths(1)) {
             String queryStartDate = date.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
             //帶入yyyymmdd撈出整月(當月)股價
             mainStockList.forEach(x -> doGetDailyStock(x.getNo(), queryStartDate));
-
         }
-        for (LocalDate date = startDate; date.isBefore(endDate); date = date.plusDays(1)) {
-            String queryStartDate = date.format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+    }
 
-            //mainStockList.forEach(x -> doGetDailyStock2(x.getNo(), queryStartDate));
-            //大戶持股比
-            //mainStockList.forEach(x -> doPostQueryStockLevelNumber(x.getNo(), queryStartDate));
-            //外資持股比
-            //doGetTWT38U(queryStartDate);
-        }
+    @Scheduled(fixedDelay = 300000)
+    public void SyncStockDailyOther() {
+        List<MainStock> mainStockList = mainStockRepository.findAll();
+        mainStockList.forEach(x -> calculate5MovingAverage(x.getNo()));
+        mainStockList.forEach(x -> calculate10MovingAverage(x.getNo()));
+        mainStockList.forEach(x -> calculate20MovingAverage(x.getNo()));
+        mainStockList.forEach(x -> calculate60MovingAverage(x.getNo()));
+        mainStockList.forEach(x -> calculate120MovingAverage(x.getNo()));
+        mainStockList.forEach(x -> calculate240MovingAverage(x.getNo()));
+    }
+    public void calculate5MovingAverage(String stockNo) {
+        int count = 5;
+        log.info("stockNo: {}", stockNo);
 
+        List<DailyPrice> dailList = dailyPriceRepository.findByNoOrderByDateDesc(stockNo);
 
+        dailList.forEach(x -> {
+            DailyPrice dp = new DailyPrice();
+            dp.setMovingAverage5(BigDecimal.ZERO);
+            dailyPriceRepository.findByNoOrderByDateDescLimitCount(x.getNo(), x.getDate(), count).forEach(
+                y -> {
+                    //log.info("EndPrice: {}", y.getEndPrice());
+                    dp.setMovingAverage5(dp.getMovingAverage5().add(y.getEndPrice()));
+                }
+            );
+            //log.info("sumEndPrice: {}", dp.getMovingAverage5().toPlainString());
+            x.setMovingAverage5(dp.getMovingAverage5().divide(new BigDecimal(count), 2, RoundingMode.HALF_UP));
+            dailyPriceRepository.saveAndFlush(x);
+        });
+    }
+    public void calculate10MovingAverage(String stockNo) {
+        int count = 10;
+        log.info("stockNo: {}", stockNo);
 
+        List<DailyPrice> dailList = dailyPriceRepository.findByNoOrderByDateDesc(stockNo);
+
+        dailList.forEach(x -> {
+            DailyPrice dp = new DailyPrice();
+            dp.setMovingAverage10(BigDecimal.ZERO);
+            dailyPriceRepository.findByNoOrderByDateDescLimitCount(x.getNo(), x.getDate(), count).forEach(
+                y -> {
+                    //log.info("EndPrice: {}", y.getEndPrice());
+                    dp.setMovingAverage10(dp.getMovingAverage10().add(y.getEndPrice()));
+                }
+            );
+            //log.info("sumEndPrice: {}", dp.getMovingAverage10().toPlainString());
+            x.setMovingAverage10(dp.getMovingAverage10().divide(new BigDecimal(count), 2, RoundingMode.HALF_UP));
+            dailyPriceRepository.saveAndFlush(x);
+        });
+    }
+
+    public void calculate20MovingAverage(String stockNo) {
+        int count = 20;
+        log.info("stockNo: {}", stockNo);
+
+        List<DailyPrice> dailList = dailyPriceRepository.findByNoOrderByDateDesc(stockNo);
+
+        dailList.forEach(x -> {
+            DailyPrice dp = new DailyPrice();
+            dp.setMovingAverage20(BigDecimal.ZERO);
+            dailyPriceRepository.findByNoOrderByDateDescLimitCount(x.getNo(), x.getDate(), count).forEach(
+                y -> {
+                    //log.info("EndPrice: {}", y.getEndPrice());
+                    dp.setMovingAverage20(dp.getMovingAverage20().add(y.getEndPrice()));
+                }
+            );
+            //log.info("sumEndPrice: {}", dp.getMovingAverage20().toPlainString());
+            x.setMovingAverage20(dp.getMovingAverage20().divide(new BigDecimal(count), 2, RoundingMode.HALF_UP));
+            dailyPriceRepository.saveAndFlush(x);
+        });
+    }
+
+    public void calculate60MovingAverage(String stockNo) {
+        int count = 60;
+        log.info("stockNo: {}", stockNo);
+
+        List<DailyPrice> dailList = dailyPriceRepository.findByNoOrderByDateDesc(stockNo);
+
+        dailList.forEach(x -> {
+            DailyPrice dp = new DailyPrice();
+            dp.setMovingAverage60(BigDecimal.ZERO);
+            dailyPriceRepository.findByNoOrderByDateDescLimitCount(x.getNo(), x.getDate(), count).forEach(
+                y -> {
+                    //log.info("EndPrice: {}", y.getEndPrice());
+                    dp.setMovingAverage60(dp.getMovingAverage60().add(y.getEndPrice()));
+                }
+            );
+            //log.info("sumEndPrice: {}", dp.getMovingAverage60().toPlainString());
+            x.setMovingAverage60(dp.getMovingAverage60().divide(new BigDecimal(count), 2, RoundingMode.HALF_UP));
+            dailyPriceRepository.saveAndFlush(x);
+        });
+    }
+
+    public void calculate120MovingAverage(String stockNo) {
+        int count = 120;
+        log.info("stockNo: {}", stockNo);
+
+        List<DailyPrice> dailList = dailyPriceRepository.findByNoOrderByDateDesc(stockNo);
+
+        dailList.forEach(x -> {
+            DailyPrice dp = new DailyPrice();
+            dp.setMovingAverage120(BigDecimal.ZERO);
+            dailyPriceRepository.findByNoOrderByDateDescLimitCount(x.getNo(), x.getDate(), count).forEach(
+                y -> {
+                    //log.info("EndPrice: {}", y.getEndPrice());
+                    dp.setMovingAverage120(dp.getMovingAverage120().add(y.getEndPrice()));
+                }
+            );
+            //log.info("sumEndPrice: {}", dp.getMovingAverage120().toPlainString());
+            x.setMovingAverage120(dp.getMovingAverage120().divide(new BigDecimal(count), 2, RoundingMode.HALF_UP));
+            dailyPriceRepository.saveAndFlush(x);
+        });
+    }
+
+    public void calculate240MovingAverage(String stockNo) {
+        int count = 240;
+        log.info("stockNo: {}", stockNo);
+
+        List<DailyPrice> dailList = dailyPriceRepository.findByNoOrderByDateDesc(stockNo);
+
+        dailList.forEach(x -> {
+            DailyPrice dp = new DailyPrice();
+            dp.setMovingAverage240(BigDecimal.ZERO);
+            dailyPriceRepository.findByNoOrderByDateDescLimitCount(x.getNo(), x.getDate(), count).forEach(
+                y -> {
+                    //log.info("EndPrice: {}", y.getEndPrice());
+                    dp.setMovingAverage240(dp.getMovingAverage240().add(y.getEndPrice()));
+                }
+            );
+            //log.info("sumEndPrice: {}", dp.getMovingAverage240().toPlainString());
+            x.setMovingAverage240(dp.getMovingAverage240().divide(new BigDecimal(count), 2, RoundingMode.HALF_UP));
+            dailyPriceRepository.saveAndFlush(x);
+        });
     }
     public void doGetMainInfo() {
         HttpURLConnection con = null;
@@ -147,8 +284,7 @@ public class SyncStockDataService {
         DataOutputStream dataOutputStream = null;
         File srcFile = null;
 
-        String url = "http://mopsfin.twse.com.tw/opendata/t187ap03_L.csv";
-        url = "https://quality.data.gov.tw/dq_download_xml.php?nid=18419&md5_url=9791ec942cbcb925635aa5612ae95588";
+        String url = "https://quality.data.gov.tw/dq_download_xml.php?nid=18419&md5_url=9791ec942cbcb925635aa5612ae95588";
         log.info("fetch {}", url);
         URL obj = null;
         try {
@@ -164,8 +300,7 @@ public class SyncStockDataService {
             isr = new InputStreamReader(is, "UTF-8");
             br = new BufferedReader(isr);
 
-            String line = "";//br.readLine();
-            //System.out.println(line);
+            String line = "";
 
             DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
@@ -269,8 +404,6 @@ public class SyncStockDataService {
                     }
                 }
             }
-
-
             isr.close();
             is.close();
             br.close();
@@ -331,6 +464,7 @@ public class SyncStockDataService {
         File srcFile = null;
 
         if (dailyPriceRepository.findByNoAndDate(stockNo, queryDate) != null) {
+            log.info("data is exist skip {} {}", stockNo, queryDate);
             return ;
         }
         String url = "https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date="+queryDate+"&stockNo=" + stockNo;
@@ -452,109 +586,7 @@ public class SyncStockDataService {
         }
 
     }
-    public void doGetDailyStock2(String stockNo, String queryDate) {
 
-        HttpURLConnection con = null;
-        InputStream is = null;
-        InputStreamReader isr = null;
-        BufferedReader br = null;
-
-        DataOutputStream dataOutputStream = null;
-        File srcFile = null;
-
-        if (dailyPriceRepository.findByNoAndDate(stockNo, queryDate) != null) {
-            return ;
-        }
-        String url = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_"+stockNo+".tw_"+queryDate+ "&json=1&delay=0";
-        log.info("fetch {}", url);
-        URL obj = null;
-        try {
-            Thread.sleep(3000);
-            //HttpsURLConnection.setDefaultSSLSocketFactory(getSSLContext().getSocketFactory());
-            //HttpsURLConnection.setDefaultHostnameVerifier(getHostnameVerifier());
-            obj = new URL(url);
-            con = (HttpURLConnection) obj.openConnection();
-            con.setRequestMethod("GET");
-            con.setDoOutput(true);
-            con.connect();
-            is = con.getInputStream();
-            isr = new InputStreamReader(is, "UTF-8");
-            br = new BufferedReader(isr);
-
-            String line = "";
-            while((line = br.readLine()) != null) {
-                System.out.println(line);
-                /*
-                JSONObject jsonObject = new JSONObject(line);
-                StockDay stockDay = new ObjectMapper().readValue(line, StockDay.class);
-
-                DailyPrice dp = new DailyPrice();
-                dp.setNo(stockNo);
-
-                if (stockDay != null && StringUtils.equals(stockDay.getStat(), "OK")) {
-                    for(String[] a : stockDay.getData()) {
-
-                        log.info("a[7] = {}", a[7]);
-                        dp.setDate(a[0].replaceAll("/","").replaceAll(",", ""));
-                        dp.setTxnNumber(new BigDecimal(a[1].trim().replaceAll("/","").replaceAll(",", "")));
-                        dp.setTxnAmount(new BigDecimal(a[2].trim().replaceAll("/","").replaceAll(",", "")));
-                        dp.setStartPrice(new BigDecimal(a[3].trim().trim().replaceAll("/","").replaceAll(",", "")));
-                        dp.setHighPrice(new BigDecimal(a[4].trim().replaceAll("/","").replaceAll(",", "")));
-                        dp.setLowPrice(new BigDecimal(a[5].trim().replaceAll("/","").replaceAll(",", "")));
-                        dp.setEndPrice(new BigDecimal(a[6].trim().replaceAll("/","").replaceAll(",", "")));
-
-                        dp.setHighLowPrice(new BigDecimal(a[7].trim().replaceAll("/","").replaceAll(",", "").replaceAll("X","")));
-                        dp.setTxnCount(new BigDecimal(a[8].trim().replaceAll("/","").replaceAll(",", "")));
-
-                        //log.info("-->{}",dp);
-                        DailyPrice dprice = dailyPriceRepository.findByNoAndDate(dp.getNo(), dp.getDate());
-                        if (dprice == null) {
-                            dprice = dailyPriceRepository.save(dp);
-                            //log.info("{}", dprice.toString());
-                        }
-                    }
-                    //log.debug("{}", stockDay);
-
-
-                }
-
-                 */
-            }
-            isr.close();
-            is.close();
-            br.close();
-            con.disconnect();
-        } catch (Exception e) {
-            log.info("Error info {}, {}", stockNo, queryDate);
-            e.printStackTrace();
-        } finally {
-            if (isr != null) {
-                try {
-                    isr.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (is != null) {
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if(br !=null) {
-                try {
-                    br.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (con != null) {
-                con.disconnect();
-            }
-        }
-
-    }
     public void doPostQueryStockLevelNumber(String stockNo, String queryDate) {
         HttpURLConnection con = null;
         String url = "https://www.tdcc.com.tw/smWeb/QryStockAjax.do";

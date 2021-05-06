@@ -51,6 +51,24 @@ public class DailyPrice<BigDeciaml> implements Serializable {
     @Column(name= "high_low_price_sign")
     private String highLowPriceSign;
 
+    @Column(name= "moving_average_5")
+    private BigDecimal movingAverage5;
+
+    @Column(name= "moving_average_10")
+    private BigDecimal movingAverage10;
+
+    @Column(name= "moving_average_20")
+    private BigDecimal movingAverage20;
+
+    @Column(name= "moving_average_60")
+    private BigDecimal movingAverage60;
+
+    @Column(name= "moving_average_120")
+    private BigDecimal movingAverage120;
+
+    @Column(name= "moving_average_240")
+    private BigDecimal movingAverage240;
+
     public Long getId() {
         return id;
     }
@@ -155,6 +173,54 @@ public class DailyPrice<BigDeciaml> implements Serializable {
         this.highLowPriceSign = highLowPriceSign;
     }
 
+    public BigDecimal getMovingAverage5() {
+        return movingAverage5;
+    }
+
+    public void setMovingAverage5(BigDecimal movingAverage5) {
+        this.movingAverage5 = movingAverage5;
+    }
+
+    public BigDecimal getMovingAverage10() {
+        return movingAverage10;
+    }
+
+    public void setMovingAverage10(BigDecimal movingAverage10) {
+        this.movingAverage10 = movingAverage10;
+    }
+
+    public BigDecimal getMovingAverage20() {
+        return movingAverage20;
+    }
+
+    public void setMovingAverage20(BigDecimal movingAverage20) {
+        this.movingAverage20 = movingAverage20;
+    }
+
+    public BigDecimal getMovingAverage60() {
+        return movingAverage60;
+    }
+
+    public void setMovingAverage60(BigDecimal movingAverage60) {
+        this.movingAverage60 = movingAverage60;
+    }
+
+    public BigDecimal getMovingAverage120() {
+        return movingAverage120;
+    }
+
+    public void setMovingAverage120(BigDecimal movingAverage120) {
+        this.movingAverage120 = movingAverage120;
+    }
+
+    public BigDecimal getMovingAverage240() {
+        return movingAverage240;
+    }
+
+    public void setMovingAverage240(BigDecimal movingAverage240) {
+        this.movingAverage240 = movingAverage240;
+    }
+
     @Override
     public String toString() {
         return "DailyPrice{" +
@@ -171,6 +237,12 @@ public class DailyPrice<BigDeciaml> implements Serializable {
             ", txnCount=" + txnCount +
             ", notes='" + notes + '\'' +
             ", highLowPriceSign='" + highLowPriceSign + '\'' +
+            ", movingAverage5=" + movingAverage5 +
+            ", movingAverage10=" + movingAverage10 +
+            ", movingAverage20=" + movingAverage20 +
+            ", movingAverage60=" + movingAverage60 +
+            ", movingAverage120=" + movingAverage120 +
+            ", movingAverage240=" + movingAverage240 +
             '}';
     }
 }
