@@ -142,7 +142,8 @@ public class SyncStockDataService {
     }
 
     //計算五日十日二十日
-    @Scheduled(fixedDelay = 300000)
+
+    @Scheduled(fixedDelay = 3600000)
     public void SyncStockDailyOther() {
         List<MainStock> mainStockList = mainStockRepository.findAll();
         mainStockList.forEach(x -> calculate5MovingAverage(x.getNo()));
@@ -163,8 +164,12 @@ public class SyncStockDataService {
             dp.setMovingAverage5(BigDecimal.ZERO);
             dailyPriceRepository.findByNoOrderByDateDescLimitCount(x.getNo(), x.getDate(), count).forEach(
                 y -> {
+                    if (y.getEndPrice() == null) {
+                        y.setEndPrice(BigDecimal.ZERO);
+                    }
                     //log.info("EndPrice: {}", y.getEndPrice());
                     dp.setMovingAverage5(dp.getMovingAverage5().add(y.getEndPrice() == null ? BigDecimal.ZERO : y.getEndPrice()));
+
                 }
             );
             //log.info("sumEndPrice: {}", dp.getMovingAverage5().toPlainString());
